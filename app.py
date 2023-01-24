@@ -15,7 +15,7 @@ if __version_info__ < (20, 0, 0, 'alpha', 1):
 			f'This example is not compatible with your curren PTB version {TG_VER}'
 		)
 
-from telegram import ForceReply, Update
+from telegram import ForceReply, Update, Message
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
@@ -78,15 +78,21 @@ async def lang_options(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 async def return_translation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 	"""This function returns a whole word data."""
-	word = update.message.text
+	word = update.message.text.lower()
+	voice = None
+
+	# get a language config dictionary
+	lang_configs = lang_scraper.decode_json_data('telebot//dict_configs.json')
 
 	if query.data == 'английском':
 		input_lang = 'English'
 
+		voice = lang_scraper.extract_audio(word, lang_configs)
+
 	if query.data == 'русском':
 		input_lang = 'Russian'
 
-	word_meaning = lang_scraper.extract_meaning(word.lower(), input_lang, 'telebot//dict_configs.json')
+	word_meaning = lang_scraper.extract_meaning(word, input_lang, lang_configs)
 
 	if not word_meaning:
 		msg = "Слово не распознано. Убедись в правильности ввода.\nКликни \'/start'\', чтобы начать перевод заново.\nДля смены языка, кликни \'/switch\'"
@@ -99,8 +105,10 @@ async def return_translation(update: Update, context: ContextTypes.DEFAULT_TYPE)
 				  Пример: {word_meaning['examples']}"""
 
 
-
 	await update.message.reply_text(text=msg)
+
+	if voice:
+		await update.message.reply_audio(audio=voice)
 
 
 # a triggering function
